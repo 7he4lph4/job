@@ -1,0 +1,80 @@
+<drac2>  #JOB
+pref = ctx.prefix
+al = ctx.alias
+cmd = pref+al
+old_coins = False
+cooldown = get_svar('jobCooldown', '28800')
+if not cooldown.isnumeric():
+    cooldown = 28800
+else:
+    cooldown = int(cooldown)
+last_job = float(get('last_job', 0))
+diff = time() - last_job
+title = 'Invalid Input!'
+args = argparse(&ARGS&)
+abi_inp = "&1&".lower().replace(' ', '')
+abi_lib = []
+skill_lib = []
+for (skill_name, skill) in character().skills:
+  abi_lib.append(skill_name.lower())
+  skill_lib.append(skill)
+value_lib = []
+for v in skill_lib:
+  value_lib.append(v.value)
+max_mod = max(value_lib)
+abi_mod = character().skills.athletics.value if abi_inp in 'athletics' else character().skills.acrobatics.value if abi_inp in 'acrobatics' else character().skills.animalHandling.value if abi_inp in 'animalhandling' else character().skills.arcana.value if abi_inp in 'arcana' else character().skills.deception.value if abi_inp in 'deception' else character().skills.history.value if abi_inp in 'history' else character().skills.insight.value if abi_inp in 'insight' else character().skills.intimidation.value if abi_inp in 'intimidation' else character().skills.investigation.value if abi_inp in 'investigation' else character().skills.medicine.value if abi_inp in 'medicine' else character().skills.nature.value if abi_inp in 'nature' else character().skills.perception.value if abi_inp in 'perception' else character().skills.performance.value if abi_inp in 'performance' else character().skills.persuasion.value if abi_inp in 'persuasion' else character().skills.religion.value if abi_inp in 'religion' else character().skills.sleightOfHand.value if abi_inp in 'sleightofhand' else character().skills.stealth.value if abi_inp in 'stealth' else character().skills.survival.value if abi_inp in 'survival' else character().skills.strength.value if abi_inp in 'strength' else character().skills.dexterity.value if abi_inp in 'dexterity' else character().skills.constitution.value if abi_inp in 'constitution' else character().skills.intelligence.value if abi_inp in 'intelligence' else character().skills.wisdom.value if abi_inp in 'wisdom' else character().skills.charisma.value if abi_inp in 'charisma' else False
+for i in range(len(abi_lib)):
+    if abi_inp in abi_lib[i]:
+        abi_used = abi_lib[i]
+        abi_used = 'animal handling' if abi_used == 'animalhandling' else 'sleight of hand' if abi_used == 'sleightofhand' else abi_used
+        break
+    else:
+        abi_used = False
+if abi_used:
+    if diff < cooldown:
+        time_left = int(last_job+cooldown)
+        cd_display = f'<t:{time_left}:R>'
+        title = f'{name}! Don\'t over-work yourself now!'
+        desc = f'Come back later!\n\nYour next shift opens up **{cd_display}**'
+    else:
+        character().set_cvar('last_job', time())
+        rollstring = ["1d20","2d20kh1","2d20kl1"][args.adv()] + f'+{abi_mod}' + ("+"+args.join("b","+") if args.last("b") else ('+d4') if args.last('guidance') else "")
+        wage_roll = vroll(rollstring)
+        wage_mult = get_svar('wageMultiplier', '0.25')
+        if not wage_mult.replace('.', '').isnumeric():
+            wage_mult = 0.25
+        else:
+            wage_mult = float(wage_mult)
+        wage = round(wage_roll.total * wage_mult)
+        wage_gold = f'{wage}gp'
+        title = f'{name} goes to work making {"an" if abi_used[0] in "aeiou" else "a"} {abi_used.title()} check'
+        max_wage = (20 + max_mod) * wage_mult
+        if wage < (max_wage - max_wage * 0.8):
+            desc = f'It was not your best day!\n You only receive'
+        elif wage < (max_wage - max_wage * 0.65):
+            desc = f'It was just another uneventful day at work! Regular run-of-the-mill. You collect'
+        elif wage < (max_wage - max_wage * 0.35):
+            desc = f'Someone really liked your work and left a large tip for you! You earn'
+        elif wage < (max_wage - max_wage * 0.15):
+            desc = f'That was a really impressive job today! You earn'
+        else:
+            desc = f'Your perfomance today was artistic, this is one of the best days you\'ve ever had!\n You earn'
+        desc = f'{wage_roll}\n\n{desc} **{wage_gold}**! :coin:'
+        if exists('bags'):
+            bag=load_json(get('bags'))
+            for bag_categories in bag:
+                    if bag_categories[0] == 'Coin Pouch':
+                        currencys = bag_categories[1]
+                        for currency in currencys:
+                            if currency == 'gp':
+                                currencys[currency] += wage
+                                character().set_cvar('bags', dump_json(bag))
+                                desc = desc + f'\n\nYour earnings were automagically added to your `{pref}coins` and `{pref}g coins` pouch :moneybag:'
+                                old_coins = True
+        character().coinpurse.modify_coins(0,wage)
+        if not old_coins:
+            desc = desc + f'\n\nYour earnings were automagically added to your `{pref}g coins` pouch :moneybag:'
+else:
+    desc = f'Remember the right format is:\n`{cmd} <ability check>`'
+return f'embed -title "{title}" -desc "{desc}" -thumb {image} -color {color} -footer "!help {ctx.alias} | made by @alpha983"'
+</drac2>
